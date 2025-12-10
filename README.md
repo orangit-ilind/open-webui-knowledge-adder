@@ -27,20 +27,34 @@ uv pip install -r requirements.txt
 
 You can provide your Open WebUI API key in two ways:
 
-1. **Environment variable** (recommended):
+1. **Environment variable** 
    ```bash
    export OPEN_WEBUI_API_KEY=your_api_key_here
    ```
-
-2. **Command-line argument**:
+2. **.env file** 
+   ```bash
+    OPEN_WEBUI_API_KEY=your_api_key_here
+   ```
+3. **Command-line argument**:
    ```bash
    --api-key your_api_key_here
    ```
 
 To get your API key:
-1. Log into your Open WebUI instance
-2. Go to Settings > Account
-3. Copy your API key
+1. Set environment variable "ENABLE_API_KEYS=true"
+2. Log into your Open WebUI instance
+3. Edit Groups default permissions to enable "API Keys" option, in Admin panel, Users, Groups, "Default permissions"
+4. Go to Settings > Account > Api keys > Create New Api Key
+5. Copy your API key
+
+## Recommended Open-WebUI settings
+
+In Admin panel, Settings, Documents use the following settings
+Embedding model: sentence-transformers/all-MiniLM-L6-v2
+Hybrid Search: True
+Enrich Hybrid Search Text: True
+Reranking Engine: Default(SentenceTransformers)
+Reranking Model: mixedbread-ai/mxbai-rerank-base-v1
 
 ## Usage
 
