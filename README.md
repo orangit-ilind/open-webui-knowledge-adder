@@ -49,12 +49,13 @@ To get your API key:
 
 ## Recommended Open-WebUI settings
 
-In Admin panel, Settings, Documents use the following settings
-Embedding model: sentence-transformers/all-MiniLM-L6-v2
-Hybrid Search: True
-Enrich Hybrid Search Text: True
-Reranking Engine: Default(SentenceTransformers)
-Reranking Model: mixedbread-ai/mxbai-rerank-base-v1
+In Admin panel, Settings, Documents use the following settings:
+
+- **Embedding model**: `sentence-transformers/all-MiniLM-L6-v2`
+- **Hybrid Search**: `True`
+- **Enrich Hybrid Search Text**: `True`
+- **Reranking Engine**: `Default(SentenceTransformers)`
+- **Reranking Model**: `mixedbread-ai/mxbai-rerank-base-v1`
 
 ## Usage
 
