@@ -17,7 +17,8 @@ A Python application that interfaces with Open WebUI's REST API to programmatica
 2. Install dependencies:
 
 ```bash
-pip install -r requirements.txt
+uv venv
+uv pip install -r requirements.txt
 ```
 
 ## Configuration
