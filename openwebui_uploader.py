@@ -7,6 +7,7 @@ to manage knowledge collections and upload files.
 
 import os
 import logging
+import time
 from typing import Optional, List, Dict, Any
 import requests
 
@@ -201,32 +202,43 @@ class OpenWebUIClient:
             return None
         return None
     
-    def add_file_to_knowledge(self, knowledge_id: str, file_id: str) -> bool:
+    def add_file_to_knowledge(self, knowledge_id: str, file_id: str, retries: int = 3, retry_delay: float = 1.0) -> bool:
         """
         Associate an uploaded file with a knowledge collection.
         
         Args:
             knowledge_id: ID of the knowledge collection
             file_id: ID of the uploaded file
+            retries: Number of retry attempts (default: 3)
+            retry_delay: Delay between retries in seconds (default: 1.0)
             
         Returns:
             True if successful, False otherwise
         """
-        # API requires just file_id - metadatas field (even as empty list) causes errors
+        # API requires just file_id - metadatas field (even as empty list or None) causes errors
+        # The UI sends only {"file_id": "..."} without metadatas field
+        # Server-side ChromaDB insert fails if metadatas contains None values
+        # Retry logic helps handle transient server-side processing issues
         payload = {'file_id': file_id}
         
-        response = self._make_request(
-            'POST',
-            f'/api/v1/knowledge/{knowledge_id}/file/add',
-            headers=self.headers,
-            json=payload
-        )
+        for attempt in range(retries):
+            response = self._make_request(
+                'POST',
+                f'/api/v1/knowledge/{knowledge_id}/file/add',
+                headers=self.headers,
+                json=payload
+            )
+            
+            if response:
+                logger.info(f"Added file {file_id} to knowledge collection {knowledge_id}")
+                return True
+            
+            # If not the last attempt, wait before retrying
+            if attempt < retries - 1:
+                logger.debug(f"Retry {attempt + 1}/{retries} failed, waiting {retry_delay}s before retry...")
+                time.sleep(retry_delay)
         
-        if response:
-            logger.info(f"Added file {file_id} to knowledge collection {knowledge_id}")
-            return True
-        
-        logger.error(f"Failed to add file {file_id} to knowledge collection {knowledge_id}")
+        logger.error(f"Failed to add file {file_id} to knowledge collection {knowledge_id} after {retries} attempts")
         return False
     
     def upload_files_to_knowledge(
@@ -280,6 +292,10 @@ class OpenWebUIClient:
         for file_path in file_paths:
             file_id = self.upload_file(file_path)
             if file_id:
+                # Small delay to allow server to process the uploaded file
+                # This helps avoid race conditions with server-side file processing
+                time.sleep(0.5)
+                
                 if self.add_file_to_knowledge(knowledge_id, file_id):
                     results['success'] += 1
                 else:
