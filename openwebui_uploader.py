@@ -8,11 +8,38 @@ to manage knowledge collections and upload files.
 import os
 import logging
 import time
+from pathlib import Path
 from typing import Optional, List, Dict, Any
 import requests
 
 
 logger = logging.getLogger(__name__)
+
+
+def is_allowed_file(file_path: str) -> bool:
+    """
+    Check if a file should be processed based on its extension and filename.
+
+    Args:
+        file_path: Path to the file to check
+
+    Returns:
+        True if file should be processed, False if it should be skipped
+    """
+    path = Path(file_path)
+    filename = path.name.lower()
+
+    # Skip system files
+    if filename in [".ds_store", "thumbs.db"]:
+        return False
+
+    # Get file extension (case-insensitive)
+    extension = path.suffix.lower()
+
+    # Allowed extensions: md, txt, pdf, doc, docx
+    allowed_extensions = {".md", ".txt", ".pdf", ".doc", ".docx"}
+
+    return extension in allowed_extensions
 
 
 class OpenWebUIClient:
@@ -181,6 +208,11 @@ class OpenWebUIClient:
         """
         if not os.path.isfile(file_path):
             logger.error(f"File not found: {file_path}")
+            return None
+
+        # Check if file is allowed (skip system files and non-text formats)
+        if not is_allowed_file(file_path):
+            logger.debug(f"Skipping file (not allowed): {file_path}")
             return None
 
         try:

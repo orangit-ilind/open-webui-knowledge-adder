@@ -25,6 +25,32 @@ def setup_logging(verbose: bool = False):
     )
 
 
+def is_allowed_file(file_path: str) -> bool:
+    """
+    Check if a file should be processed based on its extension and filename.
+
+    Args:
+        file_path: Path to the file to check
+
+    Returns:
+        True if file should be processed, False if it should be skipped
+    """
+    path = Path(file_path)
+    filename = path.name.lower()
+
+    # Skip system files
+    if filename in [".ds_store", "thumbs.db"]:
+        return False
+
+    # Get file extension (case-insensitive)
+    extension = path.suffix.lower()
+
+    # Allowed extensions: md, txt, pdf, doc, docx
+    allowed_extensions = {".md", ".txt", ".pdf", ".doc", ".docx"}
+
+    return extension in allowed_extensions
+
+
 def collect_files(directory: str, recursive: bool = True) -> List[str]:
     """
     Collect all files from a directory.
@@ -43,15 +69,31 @@ def collect_files(directory: str, recursive: bool = True) -> List[str]:
     if not directory_path.is_dir():
         raise ValueError(f"Path is not a directory: {directory}")
 
+    logger = logging.getLogger(__name__)
     files = []
+    skipped_count = 0
+
     if recursive:
         for file_path in directory_path.rglob("*"):
             if file_path.is_file():
-                files.append(str(file_path))
+                if is_allowed_file(str(file_path)):
+                    files.append(str(file_path))
+                else:
+                    skipped_count += 1
+                    logger.debug(f"Skipping file: {file_path}")
     else:
         for file_path in directory_path.iterdir():
             if file_path.is_file():
-                files.append(str(file_path))
+                if is_allowed_file(str(file_path)):
+                    files.append(str(file_path))
+                else:
+                    skipped_count += 1
+                    logger.debug(f"Skipping file: {file_path}")
+
+    if skipped_count > 0:
+        logger.info(
+            f"Skipped {skipped_count} file(s) (system files or unsupported formats)"
+        )
 
     return sorted(files)
 
