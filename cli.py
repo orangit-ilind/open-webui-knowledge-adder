@@ -12,7 +12,11 @@ import logging
 from pathlib import Path
 from typing import List
 
+from dotenv import load_dotenv
 from openwebui_uploader import OpenWebUIClient
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 def setup_logging(verbose: bool = False):
@@ -117,23 +121,23 @@ Examples:
   python cli.py --endpoint http://localhost:3000 --api-key YOUR_KEY \\
                 --knowledge "My Docs" --path ./documents --no-recursive
 
-  # Use API key from environment variable
+  # Use API key and endpoint from environment variables or .env file
   export OPEN_WEBUI_API_KEY=your_key
-  python cli.py --endpoint http://localhost:3000 \\
-                --knowledge "My Docs" --path ./documents
+  export OPEN_WEBUI_ENDPOINT=http://localhost:3000
+  python cli.py --knowledge "My Docs" --path ./documents
         """,
     )
 
     parser.add_argument(
         "--endpoint",
-        required=True,
-        help="Open WebUI API endpoint (e.g., http://localhost:3000)",
+        default=os.environ.get("OPEN_WEBUI_ENDPOINT"),
+        help="Open WebUI API endpoint (e.g., http://localhost:3000). Can also be set via OPEN_WEBUI_ENDPOINT env var or .env file",
     )
 
     parser.add_argument(
         "--api-key",
         default=os.environ.get("OPEN_WEBUI_API_KEY"),
-        help="API key for authentication (or set OPEN_WEBUI_API_KEY env var)",
+        help="API key for authentication. Can be set via OPEN_WEBUI_API_KEY env var or .env file",
     )
 
     parser.add_argument(
@@ -183,7 +187,14 @@ Examples:
     # Validate API key
     if not args.api_key:
         logger.error(
-            "API key is required. Provide --api-key or set OPEN_WEBUI_API_KEY environment variable."
+            "API key is required. Provide --api-key, set OPEN_WEBUI_API_KEY environment variable, or add it to .env file."
+        )
+        sys.exit(1)
+
+    # Validate endpoint
+    if not args.endpoint:
+        logger.error(
+            "Endpoint is required. Provide --endpoint, set OPEN_WEBUI_ENDPOINT environment variable, or add it to .env file."
         )
         sys.exit(1)
 
