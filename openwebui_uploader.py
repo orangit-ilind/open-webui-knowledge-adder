@@ -60,6 +60,10 @@ class OpenWebUIClient:
             "Accept": "application/json",
             "Content-Type": "application/json",
         }
+        # Upload headers match the captured browser drag-and-drop request pattern.
+        # See CAPTURED_REQUEST_DETAILS.md for reference.
+        # Note: Content-Type is NOT set here - requests library automatically sets
+        # multipart/form-data with boundary when files parameter is used.
         self.upload_headers = {
             "Authorization": f"Bearer {api_key}",
             "Accept": "application/json",
@@ -198,7 +202,17 @@ class OpenWebUIClient:
 
     def upload_file(self, file_path: str) -> Optional[str]:
         """
-        Upload a file to Open WebUI.
+        Upload a file to Open WebUI using POST /api/v1/files/.
+
+        This method implements the exact request pattern captured from browser
+        drag-and-drop uploads. See CAPTURED_REQUEST_DETAILS.md for complete
+        request/response documentation.
+
+        Request pattern:
+        - Endpoint: POST /api/v1/files/
+        - Headers: Authorization (Bearer token), Accept: application/json
+        - Payload: multipart/form-data with form field named "file"
+        - Response: JSON with id, user_id, filename, data.status, meta fields
 
         Args:
             file_path: Path to the file to upload
@@ -217,19 +231,45 @@ class OpenWebUIClient:
 
         try:
             with open(file_path, "rb") as file:
+                # Prepare multipart/form-data payload matching browser upload pattern.
+                # Form field MUST be named "file" (not "files" or any other name).
+                # Tuple format: (filename, file_object) - requests library handles Content-Type.
                 files = {"file": (os.path.basename(file_path), file)}
+                # POST to /api/v1/files/ endpoint with upload headers.
+                # Headers include Authorization (Bearer token) and Accept: application/json.
                 response = self._make_request(
                     "POST", "/api/v1/files/", headers=self.upload_headers, files=files
                 )
                 if response:
                     try:
+                        # Parse JSON response matching captured structure:
+                        # {id, user_id, filename, data: {status}, meta: {name, size, ...}}
                         result = response.json()
                         file_id = result.get("id")
-                        logger.info(f"Uploaded file '{file_path}' with ID: {file_id}")
+                        filename = result.get("filename") or result.get("meta", {}).get(
+                            "name"
+                        )
+                        file_size = result.get("meta", {}).get("size")
+                        status = result.get("data", {}).get("status", "unknown")
+
+                        logger.info(
+                            f"Uploaded file '{file_path}' with ID: {file_id} "
+                            f"(filename: {filename}, size: {file_size}, status: {status})"
+                        )
                         return file_id
-                    except ValueError:
-                        logger.error("Failed to parse response as JSON")
+                    except ValueError as e:
+                        logger.error(
+                            f"Failed to parse response as JSON: {e}. "
+                            f"Response status: {response.status_code}, "
+                            f"Response text: {response.text[:200]}"
+                        )
                         return None
+                else:
+                    logger.error(
+                        f"Upload request failed for '{file_path}'. "
+                        f"Check API endpoint and authentication."
+                    )
+                    return None
         except IOError as e:
             logger.error(f"Error reading file {file_path}: {e}")
             return None
@@ -240,7 +280,7 @@ class OpenWebUIClient:
         knowledge_id: str,
         file_id: str,
         retries: int = 3,
-        retry_delay: float = 1.0,
+        retry_delay: float = 5.0,
     ) -> bool:
         """
         Associate an uploaded file with a knowledge collection.
